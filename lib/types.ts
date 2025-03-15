@@ -2,11 +2,12 @@ export type PieceType = "king" | "queen" | "rook" | "bishop" | "knight" | "pawn"
 export type Player = "white" | "black"
 export type GameState = "playing" | "check" | "checkmate" | "stalemate" | "draw" | "timeout"
 
-export interface ChessPiece {
+export type ChessPiece = {
   type: PieceType
   player: Player
   hasMoved?: boolean
-}
+  movedThisTurn?: boolean
+} | null
 
 export interface Position {
   row: number
@@ -21,4 +22,3 @@ export interface CapturedPieces {
   whiteSelf: ChessPiece[]
   blackSelf: ChessPiece[]
 }
-

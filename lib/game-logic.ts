@@ -14,16 +14,16 @@ export function initialBoardSetup(): ChessPiece[][] {
 
   // Set up pawns
   for (let col = 0; col < 8; col++) {
-    board[1][col] = { type: "pawn", player: "black", hasMoved: false }
-    board[6][col] = { type: "pawn", player: "white", hasMoved: false }
+    board[1][col] = { type: "pawn", player: "black", hasMoved: false, movedThisTurn: false }
+    board[6][col] = { type: "pawn", player: "white", hasMoved: false, movedThisTurn: false }
   }
 
   // Set up other pieces
   const backRowPieces: PieceType[] = ["rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"]
 
   for (let col = 0; col < 8; col++) {
-    board[0][col] = { type: backRowPieces[col], player: "black", hasMoved: false }
-    board[7][col] = { type: backRowPieces[col], player: "white", hasMoved: false }
+    board[0][col] = { type: backRowPieces[col], player: "black", hasMoved: false, movedThisTurn: false }
+    board[7][col] = { type: backRowPieces[col], player: "white", hasMoved: false, movedThisTurn: false }
   }
 
   return board
@@ -38,53 +38,39 @@ export function isValidMove(
   currentPlayer: Player,
   piece: ChessPiece,
 ): boolean {
-  // Can't move to the same position
-  if (fromRow === toRow && fromCol === toCol) return false
+  if (!piece) return false;
 
-  // Can't move outside the board
-  if (toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7 || fromRow < 0 || fromRow > 7 || fromCol < 0 || fromCol > 7) {
-    return false
+  // Ensure the piece belongs to the current player
+  if (piece.player !== currentPlayer) return false;
+
+  // Check if destination is within board bounds
+  if (toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) return false;
+
+  // Get the target piece
+  const targetPiece = board[toRow][toCol];
+
+  // Can't capture your own piece (except for rook/queen special ability)
+  if (targetPiece && targetPiece.player === currentPlayer && !(piece.type === "rook" || piece.type === "queen")) {
+    return false;
   }
 
-  // Can't capture your own pieces (except for rooks and queens)
-  const targetPiece = board[toRow][toCol]
-  if (targetPiece && targetPiece.player === currentPlayer && piece.type !== "rook" && piece.type !== "queen") {
-    return false
-  }
-
-  // Special case: Rooks and Queens can capture own pieces (except king)
-  if (
-    targetPiece &&
-    targetPiece.player === currentPlayer &&
-    (piece.type === "rook" || piece.type === "queen") &&
-    targetPiece.type === "king"
-  ) {
-    return false
-  }
-
-  // Check piece-specific movement rules
+  // Delegate to specific piece movement validation
   switch (piece.type) {
     case "pawn":
-      return isValidPawnMove(board, fromRow, fromCol, toRow, toCol, currentPlayer, piece)
+      return isValidPawnMove(board, fromRow, fromCol, toRow, toCol, currentPlayer, piece);
     case "knight":
-      return isValidKnightMove(board, fromRow, fromCol, toRow, toCol)
+      return isValidKnightMove(board, fromRow, fromCol, toRow, toCol);
     case "bishop":
-      return isValidBishopMove(board, fromRow, fromCol, toRow, toCol, currentPlayer)
+      return isValidBishopMove(board, fromRow, fromCol, toRow, toCol, currentPlayer);
     case "rook":
-      return isValidRookMove(board, fromRow, fromCol, toRow, toCol)
+      return isValidRookMove(board, fromRow, fromCol, toRow, toCol);
     case "queen":
-      // Queen can move like a rook or bishop with special abilities
-      if (fromRow === toRow || fromCol === toCol) {
-        // Moving like a rook - queens can move through pieces
-        return true
-      } else {
-        // Moving like a bishop
-        return isValidBishopMove(board, fromRow, fromCol, toRow, toCol, currentPlayer)
-      }
+      return isValidBishopMove(board, fromRow, fromCol, toRow, toCol, currentPlayer) ||
+             isValidRookMove(board, fromRow, fromCol, toRow, toCol);
     case "king":
-      return isValidKingMove(fromRow, fromCol, toRow, toCol)
+      return isValidKingMove(fromRow, fromCol, toRow, toCol);
     default:
-      return false
+      return false;
   }
 }
 
@@ -274,7 +260,63 @@ function isValidRookMove(
 
 function isValidKingMove(fromRow: number, fromCol: number, toRow: number, toCol: number): boolean {
   // King moves one square in any direction
-  return Math.abs(fromRow - toRow) <= 1 && Math.abs(fromCol - toCol) <= 1
+  // Special rule: Kings can move up to two squares in any direction
+  return Math.abs(fromRow - toRow) <= 2 && Math.abs(fromCol - toCol) <= 2
+}
+
+function isValidCastling(
+  board: ChessPiece[][],
+  fromRow: number,
+  fromCol: number,
+  toRow: number,
+  toCol: number,
+  piece: ChessPiece
+): boolean {
+  // Castling conditions:
+  // 1. King has not moved
+  // 2. Rook has not moved
+  // 3. No pieces between king and rook
+  // 4. King is not in check (not implemented for simplicity)
+  // 5. King does not pass through a square that is attacked (not implemented for simplicity)
+
+  if (piece.hasMoved) return false;
+  
+  // Must be same row for castling
+  if (fromRow !== toRow) return false;
+  
+  // Kingside castling (moving 2 squares to the right)
+  if (toCol === fromCol + 2) {
+    // Check if there's a rook in the correct position
+    const rook = board[fromRow][7];
+    if (!rook || rook.type !== "rook" || rook.player !== piece.player || rook.hasMoved) {
+      return false;
+    }
+    
+    // Check if squares between king and rook are empty
+    for (let col = fromCol + 1; col < 7; col++) {
+      if (board[fromRow][col]) return false;
+    }
+    
+    return true;
+  }
+  
+  // Queenside castling (moving 2 squares to the left)
+  if (toCol === fromCol - 2) {
+    // Check if there's a rook in the correct position
+    const rook = board[fromRow][0];
+    if (!rook || rook.type !== "rook" || rook.player !== piece.player || rook.hasMoved) {
+      return false;
+    }
+    
+    // Check if squares between king and rook are empty
+    for (let col = fromCol - 1; col > 0; col--) {
+      if (board[fromRow][col]) return false;
+    }
+    
+    return true;
+  }
+  
+  return false;
 }
 
 export function movePiece(
@@ -287,11 +329,38 @@ export function movePiece(
   currentPlayer: Player,
 ) {
   const newBoard = board.map((row) => [...row])
-  const piece = { ...newBoard[fromRow][fromCol] }
+  const piece = newBoard[fromRow][fromCol]
+  if (!piece) {
+    return {
+      newBoard: board,
+      newCapturedPieces: capturedPieces,
+      capturedOwnPiece: false,
+      capturedPiece: null,
+      isCheckmate: false,
+      isStalemate: false,
+      kingMoved: false,
+      kingHasMovedThisTurn: false
+    }
+  }
+
   const targetPiece = newBoard[toRow][toCol]
+  
+  // Track if king has already moved this turn
+  const kingHasMovedThisTurn = piece.type === "king" && piece.movedThisTurn;
 
   // Mark the piece as moved
-  piece.hasMoved = true
+  piece.hasMoved = true;
+  
+  // For kings, track if they've moved this turn
+  if (piece.type === "king") {
+    // Allow double move if first move was valid
+    if (!kingHasMovedThisTurn && Math.abs(toRow - fromRow) <= 2 && Math.abs(toCol - fromCol) <= 2) {
+      piece.movedThisTurn = true;
+    } else {
+      // Reset after second move or invalid move
+      piece.movedThisTurn = false;
+    }
+  }
 
   // Handle capturing
   const newCapturedPieces = { ...capturedPieces }
@@ -318,6 +387,8 @@ export function movePiece(
         capturedPiece: null,
         isCheckmate: false,
         isStalemate: false,
+        kingMoved: false,
+        kingHasMovedThisTurn: false
       }
     }
   }
@@ -325,6 +396,45 @@ export function movePiece(
   // Move the piece
   newBoard[toRow][toCol] = piece
   newBoard[fromRow][fromCol] = null
+
+  // Handle castling
+  if (piece.type === "king" && !piece.hasMoved) {
+    // Kingside castling
+    if (toCol === fromCol + 2 && Math.abs(toRow - fromRow) === 0) {
+      // Check if rook hasn't moved
+      const rook = newBoard[fromRow][7];
+      if (rook && rook.type === "rook" && !rook.hasMoved) {
+        // Check if path is clear
+        if (!newBoard[fromRow][fromCol + 1] && !newBoard[fromRow][fromCol + 2]) {
+          // Move the rook
+          newBoard[fromRow][fromCol + 1] = { ...rook, hasMoved: true };
+          newBoard[fromRow][7] = null;
+        }
+      }
+    }
+    // Queenside castling
+    else if (toCol === fromCol - 2 && Math.abs(toRow - fromRow) === 0) {
+      // Check if rook hasn't moved
+      const rook = newBoard[fromRow][0];
+      if (rook && rook.type === "rook" && !rook.hasMoved) {
+        // Check if path is clear
+        if (!newBoard[fromRow][fromCol - 1] && !newBoard[fromRow][fromCol - 2]) {
+          // Move the rook
+          newBoard[fromRow][fromCol - 1] = { ...rook, hasMoved: true };
+          newBoard[fromRow][0] = null;
+        }
+      }
+    }
+  }
+
+  // Reset movedThisTurn flag for all pieces of the opponent's color
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (newBoard[row][col] && newBoard[row][col].player !== currentPlayer) {
+        newBoard[row][col].movedThisTurn = false;
+      }
+    }
+  }
 
   // Check for checkmate or stalemate (simplified)
   const isCheckmate = false // Would need proper implementation
@@ -337,6 +447,7 @@ export function movePiece(
     capturedPiece,
     isCheckmate,
     isStalemate,
+    kingMoved: piece.type === "king",
+    kingHasMovedThisTurn
   }
 }
-

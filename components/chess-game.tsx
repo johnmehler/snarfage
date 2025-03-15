@@ -34,6 +34,9 @@ export default function ChessGame({ gameId }: ChessGameProps) {
   const [gameState, setGameState] = useState<GameState>("playing")
   const [dropMode, setDropMode] = useState<boolean>(false)
   const [pieceToPlace, setPieceToPlace] = useState<ChessPiece | null>(null)
+  
+  // King double move state
+  const [kingMovedThisTurn, setKingMovedThisTurn] = useState<boolean>(false)
 
   // Clock state
   const [clockRunning, setClockRunning] = useState<boolean>(false)
@@ -229,6 +232,17 @@ export default function ChessGame({ gameId }: ChessGameProps) {
         setClockRunning(true)
       }
 
+      // Handle king's double move
+      if (result.kingMoved && !result.kingHasMovedThisTurn) {
+        // If this is the king's first move this turn, don't switch players yet
+        setKingMovedThisTurn(true)
+        setSelectedPiece(null)
+        return
+      }
+
+      // Reset king moved flag when switching players
+      setKingMovedThisTurn(false)
+
       // Switch players after any move (no immediate drop)
       setCurrentPlayer(currentPlayer === "white" ? "black" : "white")
 
@@ -368,6 +382,9 @@ export default function ChessGame({ gameId }: ChessGameProps) {
               <li>Bishops can move one square adjacent and through their own pieces</li>
               <li>Rooks can capture your own pieces (except king) and drop them later</li>
               <li>Queens have the additional powers of bishops and rooks</li>
+              <li>Kings can move up to two squares in any direction</li>
+              <li>Kings can make two moves in a turn</li>
+              <li>Kings can castle by moving two squares towards a rook</li>
             </ul>
           </div>
         </div>
@@ -409,4 +426,3 @@ export default function ChessGame({ gameId }: ChessGameProps) {
     </div>
   )
 }
-

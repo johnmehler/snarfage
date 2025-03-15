@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import type { Player } from "@/lib/types"
-import { Clock, Pause, Play, RotateCcw } from "lucide-react"
+import { Clock, Pause, Play, RotateCcw, Plus, Minus } from "lucide-react"
+import { Slider } from "@/components/ui/slider"
 
 interface ChessClockProps {
   currentPlayer: Player
@@ -30,6 +31,9 @@ export default function ChessClock({
   onResetClock,
   onTimeUpdate,
 }: ChessClockProps) {
+  const [showTimeSettings, setShowTimeSettings] = useState<boolean>(false);
+  const [timeSettingMinutes, setTimeSettingMinutes] = useState<number>(10);
+
   // Format time as mm:ss
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60000)
@@ -88,6 +92,62 @@ export default function ChessClock({
           </div>
         </div>
 
+        {!hasGameStarted && (
+          <div className="mt-4">
+            <Button 
+              onClick={() => setShowTimeSettings(!showTimeSettings)} 
+              variant="outline" 
+              className="w-full mb-2"
+            >
+              {showTimeSettings ? "Hide Time Settings" : "Adjust Time Settings"}
+            </Button>
+            
+            {showTimeSettings && (
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Minutes per player: {timeSettingMinutes}</span>
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setTimeSettingMinutes(Math.max(1, timeSettingMinutes - 1))}
+                    disabled={timeSettingMinutes <= 1}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <Slider
+                    value={[timeSettingMinutes]}
+                    min={1}
+                    max={60}
+                    step={1}
+                    onValueChange={(value) => setTimeSettingMinutes(value[0])}
+                    className="flex-1"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setTimeSettingMinutes(Math.min(60, timeSettingMinutes + 1))}
+                    disabled={timeSettingMinutes >= 60}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Button 
+                  onClick={() => {
+                    onTimeUpdate("white", timeSettingMinutes * 60 * 1000);
+                    onTimeUpdate("black", timeSettingMinutes * 60 * 1000);
+                    setShowTimeSettings(false);
+                  }}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  Apply Time Settings
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2 mt-4">
           {hasGameStarted &&
             (isRunning ? (
@@ -113,4 +173,3 @@ export default function ChessClock({
     </div>
   )
 }
-
