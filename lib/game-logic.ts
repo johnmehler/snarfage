@@ -65,8 +65,7 @@ export function isValidMove(
     case "rook":
       return isValidRookMove(board, fromRow, fromCol, toRow, toCol);
     case "queen":
-      return isValidBishopMove(board, fromRow, fromCol, toRow, toCol, currentPlayer) ||
-             isValidRookMove(board, fromRow, fromCol, toRow, toCol);
+      return isValidQueenMove(board, fromRow, fromCol, toRow, toCol, currentPlayer);
     case "king":
       return isValidKingMove(fromRow, fromCol, toRow, toCol);
     default:
@@ -83,6 +82,8 @@ function isValidPawnMove(
   currentPlayer: Player,
   piece: ChessPiece,
 ): boolean {
+  // Add null check
+  if (!piece || piece.type !== "pawn") return false;
   const direction = currentPlayer === "white" ? -1 : 1
   const startRow = currentPlayer === "white" ? 6 : 1
 
@@ -256,6 +257,24 @@ function isValidRookMove(
   }
 
   return true
+}
+
+function isValidQueenMove(
+  board: ChessPiece[][],
+  fromRow: number,
+  fromCol: number,
+  toRow: number,
+  toCol: number,
+  currentPlayer: Player,
+): boolean {
+  // Check if move is horizontal or vertical
+  if (fromRow === toRow || fromCol === toCol) {
+    // Horizontal/vertical movement - can move through pieces
+    return true;
+  }
+
+  // Diagonal movement - use bishop rules
+  return isValidBishopMove(board, fromRow, fromCol, toRow, toCol, currentPlayer);
 }
 
 function isValidKingMove(fromRow: number, fromCol: number, toRow: number, toCol: number): boolean {
